@@ -1,6 +1,9 @@
 import argparse
 import logging
 import time
+import os
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import List
 
 import telepot
@@ -20,9 +23,23 @@ logging.basicConfig(
 )
 logger = logging.getLogger("accommodation_notifier")
 
+# --- LE FAUX SERVEUR POUR TROMPER RENDER ---
+def run_dummy_server():
+    port = int(os.environ.get("PORT", 10000))
+    server_address = ('0.0.0.0', port)
+    class DummyHandler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header('Content-type', 'text/plain')
+            self.end_headers()
+            self.wfile.write(b"Bot is running smoothly!")
+            
+    httpd = HTTPServer(server_address, DummyHandler)
+    logging.info(f"Faux serveur web démarré sur le port {port} pour satisfaire Render.")
+    httpd.serve_forever()
+# -------------------------------------------
 
 def load_users_conf() -> List[UserConf]:
-    # Configuration multi-villes avec tes URLs exactes
     return [
         UserConf(
             conf_title="Metz",
@@ -63,7 +80,6 @@ def create_driver(headless: bool = True) -> webdriver.Chrome:
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--no-sandbox")
 
-    # Initialisation de Chrome avec les options de sécurité
     return webdriver.Chrome(options=chrome_options)
 
 
@@ -79,10 +95,12 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # Chargement des paramètres (depuis Render)
     settings = Settings()
     bot = telepot.Bot(token=settings.TELEGRAM_BOT_TOKEN)
     bot.getMe() 
+
+    # Lancement du faux serveur en arrière-plan
+    threading.Thread(target=run_dummy_server, daemon=True).start()
 
     user_confs = load_users_conf()
 
@@ -90,7 +108,6 @@ if __name__ == "__main__":
         try:
             driver = create_driver(headless=not args.no_headless)
             
-            # Mode "Visiteur" sécurisé
             parser_obj = Parser(driver)
             notification_builder = NotificationBuilder()
             notifier = TelegramNotifier(bot)
@@ -102,7 +119,6 @@ if __name__ == "__main__":
                 if notification:
                     notifier.send_notification(conf.telegram_id, notification)
 
-            # Fermeture propre du navigateur après la vérification des 4 villes
             driver.quit()
         
         except Exception as e:
@@ -112,5 +128,5 @@ if __name__ == "__main__":
             except:
                 pass
         
-        logging.info("Recherche terminée pour les 4 villes. Attente de 10 minutes (600 secondes) pour éviter le blocage...")
-        time.sleep(600)
+        logging.info("Recherche terminée pour les 4 villes. Attente de 5 minutes (300 secondes)...")
+        time.sleep(300)
