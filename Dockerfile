@@ -4,7 +4,7 @@ ENV POETRY_VERSION=1.8.3
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# Install dependencies necessary for Chrome without using apt-key
+# Installation de Google Chrome de manière sécurisée (sans apt-key)
 RUN apt-get update && apt-get install -y \
     wget \
     --no-install-recommends && \
@@ -17,10 +17,12 @@ RUN pip install "poetry==$POETRY_VERSION"
 
 WORKDIR /app
 
-COPY pyproject.toml poetry.lock /app/
+# On ne copie QUE le pyproject.toml pour forcer Render à recréer les bons liens
+COPY pyproject.toml /app/
 
+# Installation des dépendances (sans les paquets de développement)
 RUN poetry config virtualenvs.create false \
-    && poetry install --no-root --no-interaction --no-ansi --no-dev
+    && poetry install --no-root --no-interaction --no-ansi --only main
 
 COPY . /app
 
