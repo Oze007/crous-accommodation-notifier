@@ -10,7 +10,7 @@ from selenium.webdriver.chrome.service import Service as ChromiumService
 from selenium.webdriver.chrome.webdriver import WebDriver
 from chromedriver_py import binary_path  # this will get you the path variable
 
-from src.authenticator import Authenticator
+# L'import de Authenticator a été supprimé pour garantir l'anonymat
 from src.parser import Parser
 from src.models import UserConf
 from src.notification_builder import NotificationBuilder
@@ -26,23 +26,40 @@ logger = logging.getLogger("accommodation_notifier")
 
 
 def load_users_conf() -> List[UserConf]:
+    # Configuration multi-villes
     return [
         UserConf(
-            conf_title="Me",
+            conf_title="Metz",
             telegram_id=settings.MY_TELEGRAM_ID,
-            # L'URL exacte pour ta recherche à Metz a été ajoutée ici :
             search_url="https://trouverunlogement.lescrous.fr/tools/45/search?maxPrice=310&occupationModes=alone&bounds=6.1360042_49.1487955_6.256451_49.0608244&locationName=Metz",  
+            ignored_ids=[],
+        ),
+        UserConf(
+            conf_title="Caen",
+            telegram_id=settings.MY_TELEGRAM_ID,
+            search_url="Rhttps://trouverunlogement.lescrous.fr/tools/45/search?maxPrice=300&bounds=-0.413777_49.2162655_-0.3307282_49.1530145&locationName=Caen+%2814000%29",  
+            ignored_ids=[],
+        ),
+        UserConf(
+            conf_title="Rennes",
+            telegram_id=settings.MY_TELEGRAM_ID,
+            search_url="https://trouverunlogement.lescrous.fr/tools/45/search?occupationModes=alone&bounds=-1.7525876_48.1549705_-1.6244045_48.0769155&locationName=Rennes",  
+            ignored_ids=[],
+        ),
+        UserConf(
+            conf_title="Aix-en-Provence",
+            telegram_id=settings.MY_TELEGRAM_ID,
+            search_url="https://trouverunlogement.lescrous.fr/tools/45/search?occupationModes=alone&bounds=5.2694745_43.6259224_5.5063013_43.4461058&locationName=Aix-en-Provence",  
             ignored_ids=[],
         )
     ]
 
 
 def create_driver(headless: bool = True) -> WebDriver:
-    # Set up Chrome options
     chrome_options = Options()
     if headless:
         logging.info("Running in headless mode")
-        chrome_options.add_argument("--headless")  # Run in headless mode
+        chrome_options.add_argument("--headless")
         chrome_options.add_argument("--disable-gpu")
     else:
         logging.info("Running in non-headless mode")
@@ -50,7 +67,6 @@ def create_driver(headless: bool = True) -> WebDriver:
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--no-sandbox")
 
-    # Initialize the WebDriver with the configured options
     return webdriver.Chrome(
         options=chrome_options,
         service=ChromiumService(
@@ -71,25 +87,25 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    # Chargement des paramètres (nécessite les fausses variables MSE sur Render pour ne pas crasher)
     settings = Settings()
     bot = telepot.Bot(token=settings.TELEGRAM_BOT_TOKEN)
-    bot.getMe()  # test if the bot is working
+    bot.getMe() 
 
     user_confs = load_users_conf()
 
-    # Début de la boucle infinie pour que le bot tourne H24
     while True:
         try:
             driver = create_driver(headless=not args.no_headless)
-            Authenticator(settings.MSE_EMAIL, settings.MSE_PASSWORD).authenticate_driver(driver)
-
-            parser = Parser(driver)
+            
+            # Plus aucune connexion ici. Le bot navigue en mode "Visiteur".
+            parser_obj = Parser(driver)
             notification_builder = NotificationBuilder()
             notifier = TelegramNotifier(bot)
 
             for conf in user_confs:
-                logging.info(f"Handling configuration : {conf}")
-                search_results = parser.get_accommodations(conf.search_url)  # type: ignore
+                logging.info(f"Recherche en cours pour : {conf.conf_title}")
+                search_results = parser_obj.get_accommodations(conf.search_url)
                 notification = notification_builder.search_results_notification(search_results)
                 if notification:
                     notifier.send_notification(conf.telegram_id, notification)
@@ -99,7 +115,7 @@ if __name__ == "__main__":
         except Exception as e:
             logging.error(f"Une erreur est survenue lors de l'exécution : {e}")
             try:
-                driver.quit() # S'assurer que le navigateur est bien fermé en cas de crash
+                driver.quit()
             except:
                 pass
         
