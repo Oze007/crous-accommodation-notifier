@@ -6,11 +6,7 @@ from typing import List
 import telepot
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service as ChromiumService
-from selenium.webdriver.chrome.webdriver import WebDriver
-from chromedriver_py import binary_path  # this will get you the path variable
 
-# L'import de Authenticator a été supprimé pour garantir l'anonymat
 from src.parser import Parser
 from src.models import UserConf
 from src.notification_builder import NotificationBuilder
@@ -26,7 +22,7 @@ logger = logging.getLogger("accommodation_notifier")
 
 
 def load_users_conf() -> List[UserConf]:
-    # Configuration multi-villes
+    # Configuration multi-villes avec tes URLs exactes
     return [
         UserConf(
             conf_title="Metz",
@@ -37,7 +33,7 @@ def load_users_conf() -> List[UserConf]:
         UserConf(
             conf_title="Caen",
             telegram_id=settings.MY_TELEGRAM_ID,
-            search_url="Rhttps://trouverunlogement.lescrous.fr/tools/45/search?maxPrice=300&bounds=-0.413777_49.2162655_-0.3307282_49.1530145&locationName=Caen+%2814000%29",  
+            search_url="https://trouverunlogement.lescrous.fr/tools/45/search?maxPrice=300&bounds=-0.413777_49.2162655_-0.3307282_49.1530145&locationName=Caen+%2814000%29",  
             ignored_ids=[],
         ),
         UserConf(
@@ -55,7 +51,7 @@ def load_users_conf() -> List[UserConf]:
     ]
 
 
-def create_driver(headless: bool = True) -> WebDriver:
+def create_driver(headless: bool = True) -> webdriver.Chrome:
     chrome_options = Options()
     if headless:
         logging.info("Running in headless mode")
@@ -67,12 +63,8 @@ def create_driver(headless: bool = True) -> WebDriver:
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--no-sandbox")
 
-    return webdriver.Chrome(
-        options=chrome_options,
-        service=ChromiumService(
-            executable_path=binary_path,
-        ),
-    )
+    # Initialisation de Chrome avec les options de sécurité
+    return webdriver.Chrome(options=chrome_options)
 
 
 if __name__ == "__main__":
@@ -87,7 +79,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # Chargement des paramètres (nécessite les fausses variables MSE sur Render pour ne pas crasher)
+    # Chargement des paramètres (depuis Render)
     settings = Settings()
     bot = telepot.Bot(token=settings.TELEGRAM_BOT_TOKEN)
     bot.getMe() 
@@ -98,7 +90,7 @@ if __name__ == "__main__":
         try:
             driver = create_driver(headless=not args.no_headless)
             
-            # Plus aucune connexion ici. Le bot navigue en mode "Visiteur".
+            # Mode "Visiteur" sécurisé
             parser_obj = Parser(driver)
             notification_builder = NotificationBuilder()
             notifier = TelegramNotifier(bot)
@@ -110,6 +102,7 @@ if __name__ == "__main__":
                 if notification:
                     notifier.send_notification(conf.telegram_id, notification)
 
+            # Fermeture propre du navigateur après la vérification des 4 villes
             driver.quit()
         
         except Exception as e:
@@ -119,5 +112,5 @@ if __name__ == "__main__":
             except:
                 pass
         
-        logging.info("Recherche terminée. Attente de 10 minutes (600 secondes) pour éviter le blocage...")
+        logging.info("Recherche terminée pour les 4 villes. Attente de 10 minutes (600 secondes) pour éviter le blocage...")
         time.sleep(600)
