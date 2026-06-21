@@ -1,5 +1,6 @@
 import argparse
 import logging
+import time
 from typing import List
 
 import telepot
@@ -29,9 +30,9 @@ def load_users_conf() -> List[UserConf]:
         UserConf(
             conf_title="Me",
             telegram_id=settings.MY_TELEGRAM_ID,
-            search_url="https://trouverunlogement.lescrous.fr/tools/36/search?bounds=4.863088128353419_45.79119771932692_4.887077805782618_45.764140033383086",  # type:ignore
-            # search_url="https://trouverunlogement.lescrous.fr/tools/36/search",  # type:ignore
-            ignored_ids=[2755],
+            # L'URL exacte pour ta recherche à Metz a été ajoutée ici :
+            search_url="https://trouverunlogement.lescrous.fr/tools/45/search?maxPrice=310&occupationModes=alone&bounds=6.1360042_49.1487955_6.256451_49.0608244&locationName=Metz",  
+            ignored_ids=[],
         )
     ]
 
@@ -76,18 +77,31 @@ if __name__ == "__main__":
 
     user_confs = load_users_conf()
 
-    driver = create_driver(headless=not args.no_headless)
-    Authenticator(settings.MSE_EMAIL, settings.MSE_PASSWORD).authenticate_driver(driver)
+    # Début de la boucle infinie pour que le bot tourne H24
+    while True:
+        try:
+            driver = create_driver(headless=not args.no_headless)
+            Authenticator(settings.MSE_EMAIL, settings.MSE_PASSWORD).authenticate_driver(driver)
 
-    parser = Parser(driver)
-    notification_builder = NotificationBuilder()
-    notifier = TelegramNotifier(bot)
+            parser = Parser(driver)
+            notification_builder = NotificationBuilder()
+            notifier = TelegramNotifier(bot)
 
-    for conf in user_confs:
-        logging.info(f"Handling configuration : {conf}")
-        search_results = parser.get_accommodations(conf.search_url)  # type: ignore
-        notification = notification_builder.search_results_notification(search_results)
-        if notification:
-            notifier.send_notification(conf.telegram_id, notification)
+            for conf in user_confs:
+                logging.info(f"Handling configuration : {conf}")
+                search_results = parser.get_accommodations(conf.search_url)  # type: ignore
+                notification = notification_builder.search_results_notification(search_results)
+                if notification:
+                    notifier.send_notification(conf.telegram_id, notification)
 
-    driver.quit()
+            driver.quit()
+        
+        except Exception as e:
+            logging.error(f"Une erreur est survenue lors de l'exécution : {e}")
+            try:
+                driver.quit() # S'assurer que le navigateur est bien fermé en cas de crash
+            except:
+                pass
+        
+        logging.info("Recherche terminée. Attente de 10 minutes (600 secondes) pour éviter le blocage...")
+        time.sleep(600)
