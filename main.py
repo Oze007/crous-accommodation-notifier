@@ -23,7 +23,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("accommodation_notifier")
 
-# --- LE FAUX SERVEUR POUR TROMPER RENDER ---
+# --- FAUX SERVEUR WEB ---
 def run_dummy_server():
     port = int(os.environ.get("PORT", 10000))
     server_address = ('0.0.0.0', port)
@@ -35,9 +35,9 @@ def run_dummy_server():
             self.wfile.write(b"Bot is running smoothly!")
             
     httpd = HTTPServer(server_address, DummyHandler)
-    logging.info(f"Faux serveur web démarré sur le port {port} pour satisfaire Render.")
+    logging.info(f"Faux serveur web démarré sur le port {port}.")
     httpd.serve_forever()
-# -------------------------------------------
+# ------------------------
 
 def load_users_conf() -> List[UserConf]:
     return [
@@ -99,7 +99,6 @@ if __name__ == "__main__":
     bot = telepot.Bot(token=settings.TELEGRAM_BOT_TOKEN)
     bot.getMe() 
 
-    # Lancement du faux serveur en arrière-plan
     threading.Thread(target=run_dummy_server, daemon=True).start()
 
     user_confs = load_users_conf()
@@ -116,17 +115,25 @@ if __name__ == "__main__":
                 logging.info(f"Recherche en cours pour : {conf.conf_title}")
                 search_results = parser_obj.get_accommodations(conf.search_url)
                 notification = notification_builder.search_results_notification(search_results)
+                
                 if notification:
-                    notifier.send_notification(conf.telegram_id, notification)
+                    try:
+                        # On essaie d'envoyer le beau message avec le formatage
+                        notifier.send_notification(conf.telegram_id, notification)
+                    except telepot.exception.TelegramError as e:
+                        logging.error(f"Erreur de formatage Telegram, envoi de l'alerte de secours : {e}")
+                        # PARACHUTE DE SECOURS : Un texte brut impossible à faire planter
+                        alerte_secours = f"🚨 URGENT : Des logements Crous ont été trouvés pour {conf.conf_title} !\n\n(Le détail ne peut pas s'afficher à cause de la mise en page de l'annonce, foncez vérifier sur le site !)"
+                        bot.sendMessage(conf.telegram_id, alerte_secours)
 
             driver.quit()
         
         except Exception as e:
-            logging.error(f"Une erreur est survenue lors de l'exécution : {e}")
+            logging.error(f"Une erreur globale est survenue : {e}")
             try:
                 driver.quit()
             except:
                 pass
         
-        logging.info("Recherche terminée pour les 4 villes. Attente de 5 minutes (300 secondes)...")
+        logging.info("Attente de 5 minutes (300 secondes)...")
         time.sleep(300)
