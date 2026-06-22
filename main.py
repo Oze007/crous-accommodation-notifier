@@ -135,5 +135,5 @@ if __name__ == "__main__":
             except:
                 pass
         
-        logging.info("Attente de 5 minutes (300 secondes)...")
-        time.sleep(300)
+        logging.info("Attente de 5 minutes (120 secondes)...")
+        time.sleep(120)
