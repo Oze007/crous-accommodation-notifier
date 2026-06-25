@@ -62,7 +62,7 @@ def load_users_conf() -> List[UserConf]:
         UserConf(
             conf_title="Aix-en-Provence",
             telegram_id=settings.MY_TELEGRAM_ID,
-            search_url="https://trouverunlogement.lescrous.fr/tools/45/search?occupationModes=alone&bounds=5.2694745_43.6259224_5.5063013_43.4461058&locationName=Aix-en-Provence",  
+            search_url="https://trouverunlogement.lescrous.fr/tools/45/search?maxPrice=390&occupationModes=alone&bounds=5.2694745_43.6259224_5.5063013_43.4461058&locationName=Aix-en-Provence",  
             ignored_ids=[],
         )
     ]
