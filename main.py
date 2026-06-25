@@ -44,7 +44,7 @@ def load_users_conf() -> List[UserConf]:
         UserConf(
             conf_title="Metz",
             telegram_id=settings.MY_TELEGRAM_ID,
-            search_url="https://trouverunlogement.lescrous.fr/tools/45/search?maxPrice=310&occupationModes=alone&bounds=6.1360042_49.1487955_6.256451_49.0608244&locationName=Metz",  
+            search_url="https://trouverunlogement.lescrous.fr/tools/45/search?maxPrice=390&occupationModes=alone&bounds=6.1360042_49.1487955_6.256451_49.0608244&locationName=Metz",  
             ignored_ids=[],
         ),
         UserConf(
